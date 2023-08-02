@@ -2,17 +2,10 @@
 const cheerio = require('cheerio');
 
 class HTMLTableParser {
-    // INSTANCE VARIABLES
-    #htmlToParse;
 
-    // CONSTRUCTOR
-    constructor(html) {
-        this.#htmlToParse = html;
-    }
-
-    // INSTANCE METHODS
-    parse() {
-        const $ = cheerio.load(this.#htmlToParse);
+    // CLASS METHODS
+    static parse(htmlToParse) {
+        const $ = cheerio.load(htmlToParse);
         const $loadedTable = $("table:first");
         const tableData = $loadedTable["0"].children["2"].children.filter(tag => tag.type === "tag");
         let parsedCourses = [];
@@ -28,7 +21,7 @@ class HTMLTableParser {
         return parsedCourses;
     }
 
-    getCourseMainInfo(rowElement) {
+    static getCourseMainInfo(rowElement) {
         let tokens = rowElement.children["1"].children["0"].children["0"].data.split("-").map(token => token.trim());
 
         return {
@@ -39,7 +32,7 @@ class HTMLTableParser {
         };
     }
 
-    getCourseDetails(rowElement) {
+    static getCourseDetails(rowElement) {
         const detailsArray = rowElement.children["1"].children;
         const spanElements = detailsArray.filter(element => element.name === "span");
         const anchorElement = detailsArray.filter(element => element.name === "a");
@@ -60,7 +53,7 @@ class HTMLTableParser {
         }
     }
 
-    checkScheduleExists(detailsArray) {
+    static checkScheduleExists(detailsArray) {
         const paragraphElements = detailsArray.filter(element => element.name === "p");
 
         // Plain text indicating instructor approval required
@@ -75,7 +68,7 @@ class HTMLTableParser {
         return !instructorApprovalRequired && !sectionCancelled && !remoteCourse;
     }
 
-    getCourseSchedule(tableElement) {
+    static getCourseSchedule(tableElement) {
         const rowElements = tableElement.children["2"].children.filter(element => element.name === "tr");
         const scheduledDates = new Array(rowElements.length - 1); // parse all row elements except the first since it contains column names
 
@@ -85,7 +78,7 @@ class HTMLTableParser {
         return scheduledDates;
     }
 
-    getParsedScheduledDate(rowElement) {
+    static getParsedScheduledDate(rowElement) {
         const dataElements = rowElement.children.filter(element => element.name === "td");
 
         return {
@@ -99,7 +92,7 @@ class HTMLTableParser {
         }
     }
 
-    getFirstChildData(element) {
+    static getFirstChildData(element) {
         return element.children["0"].data;
     }
 

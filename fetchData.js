@@ -6,8 +6,7 @@ async function main() {
     await saveChoppedHTMLResponse();
 
     const htmlFromFile = fs.readFileSync("htmlChopped", "utf-8");
-    let htmlParser = new HTMLTableParser(htmlFromFile);
-    console.log(htmlParser.parse());
+    console.log(HTMLTableParser.parse(htmlFromFile));
 }
 
 async function saveChoppedHTMLResponse() {
