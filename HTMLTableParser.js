@@ -15,17 +15,20 @@ class HTMLTableParser {
         const $ = cheerio.load(this.#htmlToParse);
         const $loadedTable = $("table:first");
         const tableData = $loadedTable["0"].children["2"].children.filter(tag => tag.type === "tag");
-
-        // console.log(tableData);
+        let parsedCourses = [];
 
         let i = 0;
         while (i < tableData.length) {
-            // course main info
             console.log(this.getCourseMainInfo(tableData[i++]));
-
-            // course details
             console.log(this.getCourseDetails(tableData[i++]));
+
+            // parsedCourses.push({
+            //     ...(this.getCourseMainInfo(tableData[i++])),
+            //     ...(this.getCourseDetails(tableData[i++]))
+            // });
         }
+
+        return parsedCourses;
 
         // const $loadedData = $("tr");
         //
@@ -69,10 +72,13 @@ class HTMLTableParser {
         const detailsArray = rowElement.children["1"].children;
         const spanElements = detailsArray.filter(element => element.name === "span");
         const anchorElement = detailsArray.filter(element => element.name === "a");
+        const paragraphElements = detailsArray.filter(element => element.name === "p");
         const creditsElement = anchorElement["0"].prev.prev.prev;
         const scheduleTypeElement = creditsElement.prev.prev;
         const campusElement = scheduleTypeElement.prev.prev;
-        // console.log(rowElement.children["1"].children);
+        const noScheduleExists = (detailsArray["0"].type === "text" && detailsArray["0"].data.includes("Instructor approval required."))
+            || (paragraphElements.length !== 0 && paragraphElements["0"].name === "p" && paragraphElements["0"].children["0"].type === "text" && paragraphElements["0"].children["0"].data.includes("Section cancelled")
+            || (paragraphElements.length !== 0 && paragraphElements["0"].name === "p" && paragraphElements["0"].children["0"].name === "b" && paragraphElements["0"].children["0"].children["0"].data.includes("Note: This course section will not be delivered on campus. This section will be offered by Remote Learning throughout the Winter Term.")));
 
         return {
             requiresLab: detailsArray["0"].type === "text" && detailsArray["0"].data.includes("This section must be taken with a laboratory/tutorial."),
@@ -83,7 +89,36 @@ class HTMLTableParser {
             credits: creditsElement.data.trim(),
             scheduleType: scheduleTypeElement.data.trim(),
             campus: campusElement.data.trim(),
+            schedule: noScheduleExists ? null : this.getCourseSchedule(detailsArray.filter(element => element.name === "table")["0"])
         }
+    }
+
+    getCourseSchedule(tableElement) {
+        const rowElements = tableElement.children["2"].children.filter(element => element.name === "tr");
+        const scheduledDates = new Array(rowElements.length - 1);
+
+        for (let i = 1; i < rowElements.length; i++)
+            scheduledDates.push(this.getParsedScheduledDate(rowElements[i]));
+
+        return scheduledDates;
+    }
+
+    getParsedScheduledDate(rowElement) {
+        const dataElements = rowElement.children.filter(element => element.name === "td");
+
+        return {
+            type: this.getFirstChildData(dataElements[0]),
+            timeSlot: this.getFirstChildData(dataElements[1]),
+            days: this.getFirstChildData(dataElements[2]),
+            location: this.getFirstChildData(dataElements[3]),
+            dateRange: this.getFirstChildData(dataElements[4]),
+            scheduleType: this.getFirstChildData(dataElements[5]),
+            instructors: this.getFirstChildData(dataElements[6])
+        }
+    }
+
+    getFirstChildData(element) {
+        return element.children["0"].data;
     }
 
     isLabDates(potentialSchedule) {
