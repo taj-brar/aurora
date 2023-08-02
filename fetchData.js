@@ -1,12 +1,13 @@
 "use strict";
 const HTMLTableParser = require("./HTMLTableParser.js");
+const RepeatedSession = require("./RepeatedSession.js");
 const fs = require('fs');
 
 async function main() {
     await saveChoppedHTMLResponse();
 
     const htmlFromFile = fs.readFileSync("htmlChopped", "utf-8");
-    console.log(HTMLTableParser.parse(htmlFromFile));
+    RepeatedSession.CreateFromParsedDataSet(HTMLTableParser.parse(htmlFromFile));
 }
 
 async function saveChoppedHTMLResponse() {
