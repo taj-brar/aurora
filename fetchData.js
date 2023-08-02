@@ -7,7 +7,7 @@ async function main() {
 
     const htmlFromFile = fs.readFileSync("htmlChopped", "utf-8");
     let htmlParser = new HTMLTableParser(htmlFromFile);
-    let x = htmlParser.parse();
+    console.log(htmlParser.parse());
 }
 
 async function saveChoppedHTMLResponse() {
@@ -30,26 +30,6 @@ async function saveChoppedHTMLResponse() {
     const html = await response.text();
     const htmlChopped = html.substring(html.indexOf("<table  CLASS=\"datadisplaytable\""), html.lastIndexOf("<br />"));
     fs.writeFileSync('htmlChopped', htmlChopped);
-        // .then(response => response.text())
-        // .then(html => html.substring(html.indexOf("<table  CLASS=\"datadisplaytable\""), html.lastIndexOf("<table  CLASS=\"datadisplaytable\"")))
-        // .then(htmlChopped => fs.writeFileSync('htmlChopped', htmlChopped))
-}
-
-function getChoppedHTMLResponse() {
-    // // Read the HTML file
-    // const html = fs.readFileSync('test.html', 'utf8');
-    //
-    // // Load the HTML using cheerio
-    // const $ = cheerio.load(html);
-    //
-    // // Find the table and convert it to JSON
-    // const tableRows = $('table tr').toArray();
-    // const tableData = tableRows.map(row => {
-    //     const rowData = $(row).find('td').toArray().map(cell => $(cell).text());
-    //     return rowData;
-    // });
-    //
-    // console.log(JSON.stringify(tableData, null, 2));
 }
 
 main().catch(err => console.log(err));

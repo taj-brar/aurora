@@ -19,42 +19,13 @@ class HTMLTableParser {
 
         let i = 0;
         while (i < tableData.length) {
-            console.log(this.getCourseMainInfo(tableData[i++]));
-            console.log(this.getCourseDetails(tableData[i++]));
-
-            // parsedCourses.push({
-            //     ...(this.getCourseMainInfo(tableData[i++])),
-            //     ...(this.getCourseDetails(tableData[i++]))
-            // });
+            parsedCourses.push({
+                ...(this.getCourseMainInfo(tableData[i++])),
+                ...(this.getCourseDetails(tableData[i++]))
+            });
         }
 
         return parsedCourses;
-
-        // const $loadedData = $("tr");
-        //
-        // let i = -1;
-        // while (i < $loadedData.length - 1) {
-        //     let course = $("tr:eq(" + ++i + ")").text().trim();
-        //     let all = $("tr:eq(" + ++i + ")").text().trim();
-        //     let columns = $("tr:eq(" + ++i + ")").text().trim();
-        //     let data = $("tr:eq(" + ++i + ")").text().trim();
-        //
-        //     console.log("------------------------------------------COURSE-----------------------------------------------------");
-        //     console.log(course);
-        //     if (this.isLabDates(course))
-        //         console.log("LAB");
-        //     console.log(this.getCourseInfo(course));
-        //     console.log("---------------------------------------------ALL--------------------------------------------------");
-        //     console.log(all);
-        //     console.log(this.getCourseMiscellaneous(all));
-        //     console.log("----------------------------------------------COLUMNS-------------------------------------------------");
-        //     console.log(columns);
-        //     console.log("------------------------------------------------DATA-----------------------------------------------");
-        //     console.log(data);
-        //     console.log(this.getLectureInfo(data));
-        //     console.log("-----------------------------------------------------------------------------------------------");
-        // }
-
     }
 
     getCourseMainInfo(rowElement) {
@@ -72,13 +43,9 @@ class HTMLTableParser {
         const detailsArray = rowElement.children["1"].children;
         const spanElements = detailsArray.filter(element => element.name === "span");
         const anchorElement = detailsArray.filter(element => element.name === "a");
-        const paragraphElements = detailsArray.filter(element => element.name === "p");
         const creditsElement = anchorElement["0"].prev.prev.prev;
         const scheduleTypeElement = creditsElement.prev.prev;
         const campusElement = scheduleTypeElement.prev.prev;
-        const noScheduleExists = (detailsArray["0"].type === "text" && detailsArray["0"].data.includes("Instructor approval required."))
-            || (paragraphElements.length !== 0 && paragraphElements["0"].name === "p" && paragraphElements["0"].children["0"].type === "text" && paragraphElements["0"].children["0"].data.includes("Section cancelled")
-            || (paragraphElements.length !== 0 && paragraphElements["0"].name === "p" && paragraphElements["0"].children["0"].name === "b" && paragraphElements["0"].children["0"].children["0"].data.includes("Note: This course section will not be delivered on campus. This section will be offered by Remote Learning throughout the Winter Term.")));
 
         return {
             requiresLab: detailsArray["0"].type === "text" && detailsArray["0"].data.includes("This section must be taken with a laboratory/tutorial."),
@@ -89,13 +56,28 @@ class HTMLTableParser {
             credits: creditsElement.data.trim(),
             scheduleType: scheduleTypeElement.data.trim(),
             campus: campusElement.data.trim(),
-            schedule: noScheduleExists ? null : this.getCourseSchedule(detailsArray.filter(element => element.name === "table")["0"])
+            schedule: this.checkScheduleExists(detailsArray) ? this.getCourseSchedule(detailsArray.filter(element => element.name === "table")["0"]) : null
         }
+    }
+
+    checkScheduleExists(detailsArray) {
+        const paragraphElements = detailsArray.filter(element => element.name === "p");
+
+        // Plain text indicating instructor approval required
+        const instructorApprovalRequired = detailsArray["0"].type === "text" && detailsArray["0"].data.includes("Instructor approval required.");
+
+        // Paragraph indicating section cancelled
+        const sectionCancelled = paragraphElements.length !== 0 && paragraphElements["0"].name === "p" && paragraphElements["0"].children["0"].type === "text" && paragraphElements["0"].children["0"].data.includes("Section cancelled");
+
+        // Bold text in paragraph indicating remote course
+        const remoteCourse = paragraphElements.length !== 0 && paragraphElements["0"].name === "p" && paragraphElements["0"].children["0"].name === "b" && paragraphElements["0"].children["0"].children["0"].data.includes("Note: This course section will not be delivered on campus. This section will be offered by Remote Learning throughout the Winter Term.");
+
+        return !instructorApprovalRequired && !sectionCancelled && !remoteCourse;
     }
 
     getCourseSchedule(tableElement) {
         const rowElements = tableElement.children["2"].children.filter(element => element.name === "tr");
-        const scheduledDates = new Array(rowElements.length - 1);
+        const scheduledDates = new Array(rowElements.length - 1); // parse all row elements except the first since it contains column names
 
         for (let i = 1; i < rowElements.length; i++)
             scheduledDates.push(this.getParsedScheduledDate(rowElements[i]));
@@ -119,58 +101,6 @@ class HTMLTableParser {
 
     getFirstChildData(element) {
         return element.children["0"].data;
-    }
-
-    isLabDates(potentialSchedule) {
-        return potentialSchedule.includes("computer lab")
-    }
-
-    getCourseInfo(courseInfoToParse) {
-        let tokens = courseInfoToParse.split("-").map(token => token.trim());
-
-        if (tokens[0].includes("Computer lab"))
-            return "COMPUTERLAB";
-
-        return {
-            courseName: tokens[0],
-            crn: tokens[1],
-            courseNumber: tokens[2],
-            courseSection: tokens[3]
-        };
-    }
-
-    getCourseMiscellaneous(courseMiscellaneousToParse) {
-        let firstIndex = courseMiscellaneousToParse.indexOf("Associated Term");
-        let lastIndex = courseMiscellaneousToParse.indexOf("View Catalog Entry");
-        let tokens = courseMiscellaneousToParse.substring(firstIndex, lastIndex).split("\n\n").map(token => token.trim());
-        let i = 0;
-
-        return {
-            term: this.getValueFromColonString(tokens[i++]),
-            registrationDates: this.getValueFromColonString(tokens[i++]),
-            levels: this.getValueFromColonString(tokens[i++]),
-            attributes: tokens[i].includes("Attributes") ? this.getValueFromColonString(tokens[i++]) : undefined,
-            campus: this.getValueFromColonString(tokens[i++]),
-            scheduleType: tokens[i++],
-            credits: this.getValueFromColonString(tokens[i++])
-        };
-    }
-
-    getValueFromColonString(value) {
-        return value.substring(value.includes(":") ? value.indexOf(": ") + 2 : 0, value.length);
-    }
-
-    getLectureInfo(lectureInfoToParse) {
-        let tokens = lectureInfoToParse.trim().split("\n").map(token => token.trim());
-        return {
-            type: tokens[0],
-            timeSlot: tokens[1],
-            days: tokens[2],
-            location: tokens[3],
-            dateRange: tokens[4],
-            scheduleType: tokens[5],
-            instructors: tokens[6]
-        };
     }
 
 }// end class HTMLTableParser
